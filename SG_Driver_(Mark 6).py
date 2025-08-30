@@ -9,7 +9,7 @@ board = Tk()
 obstacle_image_instances = deque(maxlen=10)
 
 board.geometry("400x500")
-board.title("SG_Driver_(Mark 4)")
+board.title("SG_Driver_(Mark 6)")
 canvas = Canvas(board, width=400, height=500, background="#dee817")  
 
 # Load static images
@@ -82,7 +82,7 @@ def moving():
 def catching():
     global obc, score, lives, paused
     car_box = canvas.bbox(car)
-    if not car_box:
+    if not car_box or  paused:
         return
     x1, y1, x2, y2 = car_box
     fact = canvas.find_overlapping(x1 + 10, y1 + 10, x2 - 10, y2 - 10)
@@ -101,7 +101,7 @@ def catching():
             lives -= 1
             canvas.itemconfigure(lives_text, text="Lives: " + str(lives))
             paused = True
-            choice = messagebox.askyesno(detail=f"Do You Want to Use One of Your {lives + 1} Lives?", title="You Crashed On an Obstacle!")
+            choice = messagebox.askyesno(detail=f"Do You Want to Use One of Your {lives + 1} Lives? \n Select Your choice within 25 Seconds otherwise The Game Will be OVer Automatically", title="You Crashed On an Obstacle!")
             if choice:
                 paused = False
                 obcreate()
@@ -115,9 +115,21 @@ def catching():
 
 # function to increase speed depends on score
 def speed():
-    global car_speed
-    multi  = (score//100) * 10
-    car_speed -= multi
+    global car_speed, interval
+    # Speed increases every 1000 points
+    speed_boost = (score // 1000) * 10
+    car_speed = max(425 - speed_boost, 100)
+
+    # Interval decreases every 1000 points
+    interval_drop = (score // 1000) * 25  # reduce by 25ms per 1000 points
+    if car_speed <= 200:
+        interval = max(3750 - interval_drop, 1400)
+
+    print("Interval:", interval)
+    print("Speed:", car_speed)
+
+    board.after(500, speed)
+
 
 def left(event):
     x1, y1 = canvas.coords(car)

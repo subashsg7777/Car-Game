@@ -30,7 +30,7 @@ canvas.pack(expand=1, fill=BOTH)
 obc = ""
 paused = False
 ob_height = randrange(175, 200)
-car_speed = 425
+car_speed = 40000
 interval = 3750
 score = 0
 lives = 3
@@ -110,7 +110,7 @@ def catching():
                 messagebox.showinfo("GAME OVER!...", f"You have scored: {score}")
             print("Choice:", choice)
     score += 1
-    canvas.itemconfigure(score_text, text="Score: " + str(score))
+    canvas.itemconfigure(score_text, text="Score: " + str(score // 10))
     board.after(100, catching)
 
 # function to increase speed depends on score

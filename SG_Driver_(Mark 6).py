@@ -7,10 +7,12 @@ from collections import deque
 
 board = Tk()
 obstacle_image_instances = deque(maxlen=10)
+pavement_Left = []
+pavement_Right = []
 
 board.geometry("400x500")
 board.title("SG_Driver_(Mark 6)")
-canvas = Canvas(board, width=400, height=500, background="#dee817")  
+canvas = Canvas(board, width=400, height=500, background="#dee817")
 
 # Load static images
 roadimg = ImageTk.PhotoImage(Image.open("road.png").resize((250, 500)))
@@ -18,13 +20,32 @@ carimg = ImageTk.PhotoImage(Image.open("car.png"))
 paveimg = ImageTk.PhotoImage(Image.open("pavement.png"))
 paveimgR = ImageTk.PhotoImage(Image.open("pavementR.png"))
 
-canvas.create_image(75, 0, anchor=NW, image=roadimg)
+# Preventing the garbage collection of images used 
+canvas.roadimg = roadimg
+canvas.carimg = carimg
+canvas.paveimg = paveimg
+canvas.paveimgR = paveimgR
 
-for y in range(0, 500, 100):
-    canvas.create_image(0, y, anchor=NW, image=paveimg)
-    canvas.create_image(325, y, anchor=NW, image=paveimgR)
+canvas.create_image(75, 0, anchor=NW, image=canvas.roadimg)
 
-car = canvas.create_image(200, 300, anchor=NW, image=carimg)
+# Setup pavement tiles
+pave_height_L = canvas.paveimg.height() or 100  # fallback if height is 0
+pave_height_R = canvas.paveimgR.height() or 100
+canvas_height = 500
+num_tiles_L = canvas_height // pave_height_L + 2
+num_tiles_R = canvas_height // pave_height_R + 2
+
+for i in range(max(num_tiles_L, num_tiles_R)):
+    y_L = i * pave_height_L
+    y_R = i * pave_height_R
+    if i < num_tiles_L:
+        lid = canvas.create_image(0, y_L, anchor=NW, image=canvas.paveimg)
+        pavement_Left.append(lid)
+    if i < num_tiles_R:
+        rid = canvas.create_image(325, y_R, anchor=NW, image=canvas.paveimgR)
+        pavement_Right.append(rid)
+
+car = canvas.create_image(200, 300, anchor=NW, image=canvas.carimg)
 canvas.pack(expand=1, fill=BOTH)
 
 obc = ""
@@ -82,7 +103,7 @@ def moving():
 def catching():
     global obc, score, lives, paused
     car_box = canvas.bbox(car)
-    if not car_box or  paused:
+    if not car_box or paused:
         return
     x1, y1, x2, y2 = car_box
     fact = canvas.find_overlapping(x1 + 10, y1 + 10, x2 - 10, y2 - 10)
@@ -101,7 +122,7 @@ def catching():
             lives -= 1
             canvas.itemconfigure(lives_text, text="Lives: " + str(lives))
             paused = True
-            choice = messagebox.askyesno(detail=f"Do You Want to Use One of Your {lives + 1} Lives? \n Select Your choice within 25 Seconds otherwise The Game Will be OVer Automatically", title="You Crashed On an Obstacle!")
+            choice = messagebox.askyesno(detail=f"Do You Want to Use One of Your {lives + 1} Lives? \n Select Your choice within 25 Seconds otherwise The Game Will be Over Automatically", title="You Crashed On an Obstacle!")
             if choice:
                 paused = False
                 obcreate()
@@ -111,25 +132,34 @@ def catching():
             print("Choice:", choice)
     score += 1
     canvas.itemconfigure(score_text, text="Score: " + str(score // 10))
-    board.after(100, catching)
+    board.after(50, catching)
 
-# function to increase speed depends on score
 def speed():
     global car_speed, interval
-    # Speed increases every 1000 points
     speed_boost = (score // 1000) * 10
     car_speed = max(425 - speed_boost, 100)
 
-    # Interval decreases every 1000 points
-    interval_drop = (score // 1000) * 25  # reduce by 25ms per 1000 points
+    interval_drop = (score // 1000) * 25
     if car_speed <= 200:
         interval = max(3750 - interval_drop, 1400)
 
     print("Interval:", interval)
     print("Speed:", car_speed)
 
-    board.after(500, speed)
+    board.after(50, speed)
 
+def move_pavements():
+    for pavement in pavement_Left:
+        canvas.move(pavement, 0, 2)
+        x, y = canvas.coords(pavement)
+        if y > canvas_height:
+            canvas.coords(pavement, x, -pave_height_L)
+    for pavement in pavement_Right:
+        canvas.move(pavement, 0, 2)
+        x, y = canvas.coords(pavement)
+        if y > canvas_height:
+            canvas.coords(pavement, x, -pave_height_R)
+    board.after(50, move_pavements)
 
 def left(event):
     x1, y1 = canvas.coords(car)
@@ -163,8 +193,9 @@ canvas.bind("<Up>", acc)
 canvas.bind("<Down>", brake)
 canvas.focus_set()
 
-board.after(1000, obcreate)
-# board.after(1000, catching)
-board.after(1000, moving)
-board.after(1000, speed)
+# Start game loops
+move_pavements()
+board.after(50, obcreate)
+board.after(50, moving)
+board.after(50, speed)
 board.mainloop()
